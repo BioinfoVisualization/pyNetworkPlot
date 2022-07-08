@@ -1,0 +1,29 @@
+### Datasets
+*.csv
+*.tsv
+*.xlsx
+*.xls
+#### or
+### Datasets in folders (extensionless like pickle)
+#/data/**/*.xlsx
+### Complete folders
+### Documents
+*.pdf
+*.doc
+*.docx
+### Figures
+*.png
+*.jpg
+### Presentations and posters
+*.pptx
+*.ppt
+*.pps
+### Python
+*.ipynb_checkpoints/
+*cache
+*#
+*~
+*\_\_pycache\_\_
+### Temp files
+### Containers
+*.sif
