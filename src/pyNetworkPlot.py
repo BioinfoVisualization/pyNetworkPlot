@@ -55,6 +55,7 @@ if module_path not in sys.path:
     sys.path.append(module_path)
 import spring_functions as kxs
 from data_functions import group_with_freq
+from drawing import *
 
 # Argparser definition
 parser = argparse.ArgumentParser(description="Parameters of volcano plot.")
@@ -102,7 +103,7 @@ elif file_type == 'csv':
     DF = pd.read_csv(in_file,sep=',',index_col=0).reset_index(drop=True)
 else:
     raise NameError("Invalid input format. Has to be either .tsv, .csv or .xlsx.")
-DF = group_with_freq(DF,seq_col,group_unique).sort_values('freq_'+seq_col,ascending=False).reset_index(drop=True)
+DF = group_with_freq(DF,seq_col,group_unique).sort_values(['freq_'+seq_col,seq_col],ascending=False).reset_index(drop=True)
 DF.loc[DF['group_'+seq_col]==-1,'group_'+seq_col]=DF['group_'+seq_col].max()+1
 
 # II. Distance matrix calculation
@@ -134,12 +135,13 @@ g.vs['freq'] = DF.loc[:,'freq_'+seq_col]
 # Node color
 if color_col == None:
     g.vs['color'] = 'red'
+    n_colors = 0
 else:
     color_label = DF.loc[:,color_col].values
     _, idx = np.unique(color_label,return_index=True)
     labs = color_label[np.sort(idx)]
-    n_labs = len(labs)
-    pal = ig.drawing.colors.ClusterColoringPalette(n_labs)
+    n_colors = len(labs)
+    pal = ig.drawing.colors.ClusterColoringPalette(n_colors)
     label2RGB = {l:pal.get_many(c)[0] for c,l in enumerate(labs)} # Numbering each label
     g.vs['color'] = [label2RGB[l] for l in color_label]
 # Node shape
@@ -147,6 +149,7 @@ if shape_col == None:
     g.vs['shape'] = 'circle'
 else:
     shapes = ['circle','rectangle','triangle-up','triangle-down','diamond']
+    funcs = [draw_circle,draw_square,draw_triangle_up,draw_triangle_down,draw_diamond]
     shape_labels = DF[shape_col].unique()
     n_shapes = len(shape_labels)
     if n_shapes > 5:
@@ -211,21 +214,20 @@ elif layout_name == 'GO':
 
 # IV. Plot generation
 if legend:
-    label_h = 0.4*unit
+    label_h = 0.5*unit
+    size = 0.25*unit
     width,height = (24*unit,18*unit)
-
     # Construct the plot
     plot = ig.Plot(out_file, bbox=(width,height), background="white")
-    plot.add(g, bbox=(1*unit, 1*unit, width-7*unit, height-1*unit),         vertex_size=g.vs['size'],layout=l)
-    # Make the plot draw itself on the Cairo surface
+    plot.add(g, bbox=(1*unit, 1*unit, width-7*unit, height-1*unit),layout=l,
+             vertex_size=g.vs['size'])
     plot.redraw()
-    # Grab the surface, construct a drawing context
     ctx = cr.Context(plot.surface)
     # Legend rectangle
-    rect_height = label_h*len(label2RGB) + label_h
+    n_labels = n_colors + bool(color_col)*1 + n_shapes + bool(shape_col)*1 + 3*bool(shape_col)
+    rect_height = label_h*(n_labels+1)
     rect_width = 3*unit # Change if the label is too long/short
-    coord = [19*unit,9*unit-rect_height/2] # standing coordinates x,y
-
+    coord = (19*unit,9*unit-rect_height/2) # standing coordinates x,y
     ctx.rectangle(coord[0],coord[1], rect_width, rect_height)
     ctx.set_source_rgb(1, 1, 1)
     ctx.fill_preserve()
@@ -233,23 +235,35 @@ if legend:
     ctx.set_line_width(2)
     ctx.stroke()
     # Legend items
-    coord[0]=coord[0]+label_h
-    for l in label2RGB.keys():
-        # Circle
-        coord[1] = coord[1] + label_h
-        ctx.move_to(coord[0],coord[1])
-        ctx.arc(coord[0],coord[1], 0.1*unit, 0, 2*pi)
-        ctx.close_path()
-        ctx.set_source_rgb(label2RGB[l][0],label2RGB[l][1],label2RGB[l][2]) #R,G,B
-        ctx.fill()
-        # Text
-        ctx.set_source_rgb(0, 0, 0)
-        ctx.set_font_size(0.3*unit)
-        ctx.select_font_face("Arial",
-                             cr.FONT_SLANT_NORMAL,
-                             cr.FONT_WEIGHT_NORMAL)
-        ctx.move_to(coord[0]+0.3*unit,coord[1]+0.1*unit)
-        ctx.show_text(l)
+    coord=(coord[0]+label_h,coord[1] + label_h)
+    # Shape items
+    if shape_col:
+        for s in range(n_shapes):
+            funcs[s](ctx,coord,size)
+            coord = (coord[0] + 1.5*size,coord[1]+0.85*size)
+            draw_text(ctx,str(shape_labels[s]),coord,size)
+            coord = (coord[0]-1.5*size,coord[1]+1.15*size)
+        coord = (coord[0],coord[1]+size)
+    # Color items
+    if color_col:
+        for l in label2RGB.keys():
+            draw_circle(ctx,coord,size,in_color=(label2RGB[l][0],label2RGB[l][1],label2RGB[l][2]),
+                       line_color=(label2RGB[l][0],label2RGB[l][1],label2RGB[l][2]))
+            coord = (coord[0]+1.5*size,coord[1]+0.85*size)
+            draw_text(ctx,str(l),coord,size)
+            coord = (coord[0]-1.5*size,coord[1]+1.15*size)
+        coord = (coord[0],coord[1]+size)
+    # Size items
+    if size_col:
+        coord= (coord[0]+0.25*size,coord[1]+0.25*size)
+        draw_circle(ctx,coord,min_node_size)
+        coord = (coord[0]+4.5*size,coord[1]+0.6*size)
+        draw_text(ctx,str(DF[size_col].min()),coord,size)
+
+        coord = (coord[0]-6.25*size,coord[1]+1.15*size)
+        draw_circle(ctx,coord,max_node_size,line_width = 0.05*size)
+        coord = (coord[0]+3*label_h,coord[1]+label_h)
+        draw_text(ctx,str(DF[size_col].max()),coord,size)
     # Save the plot
     plot.save()
 else:
