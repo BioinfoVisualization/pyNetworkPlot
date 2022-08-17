@@ -27,6 +27,12 @@
     size_col : string (optional).
         Name of the column corresponding to the size values in the dataset.
         Defaults to None.
+    custom_color : string
+        Path to a file mapping elements of color_col to a hex color code.
+        This file has one line per unique value of column color_col. Each line
+        starts with the value, followed by a comma and the hex code for the
+        color corresponding to that value.
+        Defaults to None (use system default colors).
     layout : string (optional).
         Keyword of the drawing algorithm to use. The options are 'FR'
         (Fruchterman-Reingold), 'DH' (Davidson-Harel), 'GO' (Graphopt),  DrL
@@ -50,6 +56,7 @@ import random # layout seed
 import cairo as cr
 from igraph.drawing.text import TextDrawer
 from math import pi # Legend circles
+from PIL.ImageColor import getcolor
 module_path = os.path.abspath(os.path.join('..', 'bin'))
 if module_path not in sys.path:
     sys.path.append(module_path)
@@ -63,6 +70,7 @@ parser.add_argument('in_path', type=str, help="Path to the sequence dataset.")
 parser.add_argument('out_path', type=str, help="Path to the file where the figure will be saved.")
 parser.add_argument('--seq_col', type=str, default='sequence', help="Name of the column corresponding to the sequencein the dataset. Defaults to 'sequence'.")
 parser.add_argument('--color_col', type=str, default=None, help="Name of the column corresponding to the color values in the dataset. Defaults to None.")
+parser.add_argument('--custom_color',type=str,default=None, help="Path to a file mapping elements of color_col to a hex color code. Defaults to None (use system default colors).")
 parser.add_argument('--shape_col', type=str, default=None, help="Name of the column corresponding to the shape values in the  dataset. Defaults to None.")
 parser.add_argument('--size_col', type=str, default=None, help="Name of the column corresponding to the size values in the dataset. Defaults to None.")
 parser.add_argument('--layout', type=str, default='FR', help="Keyword of the drawing algorithm to use. Defaults to 'FR'.")
@@ -74,6 +82,7 @@ in_file = args.in_path
 out_file = args.out_path
 seq_col = args.seq_col
 color_col = args.color_col
+custom_color = args.custom_color
 shape_col = args.shape_col
 size_col = args.size_col
 layout_name = args.layout
@@ -107,7 +116,7 @@ DF = group_with_freq(DF,seq_col,group_unique).sort_values(['freq_'+seq_col,seq_c
 DF.loc[DF['group_'+seq_col]==-1,'group_'+seq_col]=DF['group_'+seq_col].max()+1
 
 # II. Distance matrix calculation
-seqs = DF[seq_col].values
+seqs = DF.loc[:,seq_col].values
 L = len(seqs)
 dist = np.zeros([L,L])
 t = np.ceil(L/100)
@@ -133,17 +142,28 @@ g = ig.Graph.Weighted_Adjacency(W,mode='undirected',attr='distance',loops=False)
 g.vs['cluster'] = DF.loc[:,'group_'+seq_col]
 g.vs['freq'] = DF.loc[:,'freq_'+seq_col]
 # Node color
-if color_col == None:
-    g.vs['color'] = 'red'
-    n_colors = 0
-else:
+if custom_color:
+    label2RGB = {}
+    with open(custom_color) as file:
+        for line in file:
+            (key, value) = line.strip().split(',')
+            if key in DF.loc[:,color_col].astype(str).values:
+                label2RGB[int(key)] = tuple(v/255 for v in getcolor(value,'RGB'))
+    n_colors = len(label2RGB)
+    g.vs['color'] = DF.loc[:,color_col].map(label2RGB.get).values
+elif color_col:
     color_label = DF.loc[:,color_col].values
+    ## COLOR PALETTE ##
+    # Define unique group labels
     _, idx = np.unique(color_label,return_index=True)
     labs = color_label[np.sort(idx)]
     n_colors = len(labs)
+    # Create color pallete based on number of groups
     pal = ig.drawing.colors.ClusterColoringPalette(n_colors)
-    label2RGB = {l:pal.get_many(c)[0] for c,l in enumerate(labs)} # Numbering each label
+    label2RGB = {l:pal.get_many(c)[0] for c,l in enumerate(np.sort(labs))} # Numbering each label
     g.vs['color'] = [label2RGB[l] for l in color_label]
+else:
+    n_colors = 0
 # Node shape
 if shape_col == None:
     g.vs['shape'] = 'circle'
@@ -224,8 +244,8 @@ if legend:
     plot.redraw()
     ctx = cr.Context(plot.surface)
     # Legend rectangle
-    n_labels = n_colors + bool(color_col)*1 + n_shapes + bool(shape_col)*1 + 3*bool(shape_col)
-    rect_height = label_h*(n_labels+1)
+    n_labels = n_colors + bool(color_col)*1 + n_shapes + bool(shape_col)*1 + 3*bool(size_col)
+    rect_height = label_h*(n_labels)
     rect_width = 3*unit # Change if the label is too long/short
     coord = (19*unit,9*unit-rect_height/2) # standing coordinates x,y
     ctx.rectangle(coord[0],coord[1], rect_width, rect_height)
@@ -246,9 +266,9 @@ if legend:
         coord = (coord[0],coord[1]+size)
     # Color items
     if color_col:
-        for l in label2RGB.keys():
-            draw_circle(ctx,coord,size,in_color=(label2RGB[l][0],label2RGB[l][1],label2RGB[l][2]),
-                       line_color=(label2RGB[l][0],label2RGB[l][1],label2RGB[l][2]))
+        for l,v in label2RGB.items():
+            draw_circle(ctx,coord,size,in_color=(v[0],v[1],v[2]),
+                       line_color=(v[0],v[1],v[2]))
             coord = (coord[0]+1.5*size,coord[1]+0.85*size)
             draw_text(ctx,str(l),coord,size)
             coord = (coord[0]-1.5*size,coord[1]+1.15*size)
