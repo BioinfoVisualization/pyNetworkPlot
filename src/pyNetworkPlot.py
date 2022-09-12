@@ -27,6 +27,11 @@
     size_col : string (optional).
         Name of the column corresponding to the size values in the dataset.
         Defaults to None.
+    similarity : int (optional).
+        Maximum difference in amino acids between sequences to consider them
+        similar. If non-zero, identical sequences will be plotted red and
+        similar sequences black. Defaults to zero (only plots edges between
+        identical sequences).
     custom_color : string
         Path to a file mapping elements of color_col to a hex color code.
         This file has one line per unique value of column color_col. Each line
@@ -73,6 +78,7 @@ parser.add_argument('--color_col', type=str, default=None, help="Name of the col
 parser.add_argument('--custom_color',type=str,default=None, help="Path to a file mapping elements of color_col to a hex color code. Defaults to None (use system default colors).")
 parser.add_argument('--shape_col', type=str, default=None, help="Name of the column corresponding to the shape values in the  dataset. Defaults to None.")
 parser.add_argument('--size_col', type=str, default=None, help="Name of the column corresponding to the size values in the dataset. Defaults to None.")
+parser.add_argument('--similarity', type=int, default=0, help="Maximum difference in amino acids between sequences to consider them similar.")
 parser.add_argument('--layout', type=str, default='FR', help="Keyword of the drawing algorithm to use. Defaults to 'FR'.")
 parser.add_argument('--use-legend', dest='legend', action='store_true',help="Wether to include a legend in the figure.")
 args = parser.parse_args()
@@ -85,6 +91,7 @@ color_col = args.color_col
 custom_color = args.custom_color
 shape_col = args.shape_col
 size_col = args.size_col
+similarity = args.similarity
 layout_name = args.layout
 if color_col or shape_col or size_col:
     legend = args.legend
@@ -94,7 +101,6 @@ else:
 
 #min_seq2show = 0 # integer
 group_unique = True # Boolean
-similarity = 0 # non-negative integer
 layout_name = 'FR' # Can be FR, DH, DrL, GO, LgL, MDS
 unit=50
 #edge_width = 1.5
@@ -167,6 +173,7 @@ else:
 # Node shape
 if shape_col == None:
     g.vs['shape'] = 'circle'
+    n_shapes = 0
 else:
     shapes = ['circle','rectangle','triangle-up','triangle-down','diamond']
     funcs = [draw_circle,draw_square,draw_triangle_up,draw_triangle_down,draw_diamond]
@@ -185,6 +192,12 @@ else:
     s = DF[size_col].values
     s = (s-np.min(s))/(np.max(s)-np.min(s))*(max_node_size-min_node_size)+min_node_size
 g.vs['size'] = s
+# Edge metadata
+# Edge colors
+if similarity >0:
+    g.es['color'] = ["black" if (edge['distance']>0.1 ) else "red" for edge in g.es]
+# Edge width
+## TO IMPLEMENT
 # Graph layout
 random.seed(42)
 np.random.seed(42)
