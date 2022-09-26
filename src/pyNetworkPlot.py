@@ -78,7 +78,7 @@ parser.add_argument('--color_col', type=str, default=None, help="Name of the col
 parser.add_argument('--custom_color',type=str,default=None, help="Path to a file mapping elements of color_col to a hex color code. Defaults to None (use system default colors).")
 parser.add_argument('--shape_col', type=str, default=None, help="Name of the column corresponding to the shape values in the  dataset. Defaults to None.")
 parser.add_argument('--size_col', type=str, default=None, help="Name of the column corresponding to the size values in the dataset. Defaults to None.")
-parser.add_argument('--similarity', type=int, default=0, help="Maximum difference in amino acids between sequences to consider them similar.")
+parser.add_argument('--similarity', type=int, default=0, help="Maximum difference in amino acids between sequences to consider them similar. Defaults to 0.")
 parser.add_argument('--layout', type=str, default='FR', help="Keyword of the drawing algorithm to use. Defaults to 'FR'.")
 parser.add_argument('--use-legend', dest='legend', action='store_true',help="Wether to include a legend in the figure.")
 args = parser.parse_args()
@@ -101,6 +101,8 @@ else:
 
 #min_seq2show = 0 # integer
 group_unique = True # Boolean
+remove_unique = True # Boolean
+edge_color = 'black'
 layout_name = 'FR' # Can be FR, DH, DrL, GO, LgL, MDS
 unit=50
 #edge_width = 1.5
@@ -118,8 +120,19 @@ elif file_type == 'csv':
     DF = pd.read_csv(in_file,sep=',',index_col=0).reset_index(drop=True)
 else:
     raise NameError("Invalid input format. Has to be either .tsv, .csv or .xlsx.")
+# Checks for NaN columns
+nan_cols = []
+for c in DF.columns:
+    if np.any(DF.loc[:,c].isna()):
+        nan_cols.append(c)
+if len(nan_cols)>0:
+    raise ValueError('The columns ', nan_cols, ' have NaN values.')
+# Frequency grouping
 DF = group_with_freq(DF,seq_col,group_unique).sort_values(['freq_'+seq_col,seq_col],ascending=False).reset_index(drop=True)
-DF.loc[DF['group_'+seq_col]==-1,'group_'+seq_col]=DF['group_'+seq_col].max()+1
+if remove_unique:
+    DF = DF.loc[DF['group_'+seq_col]!=-1]
+else:
+    DF.loc[DF['group_'+seq_col]==-1,'group_'+seq_col]=DF['group_'+seq_col].max()+1
 
 # II. Distance matrix calculation
 seqs = DF.loc[:,seq_col].values
@@ -187,7 +200,7 @@ else:
     g.vs['shape'] = DF.loc[:,shape_col].replace(shape_dic)
 # Node size
 if size_col==None:
-    s = 20
+    s = 0.5*unit
 else:
     s = DF[size_col].values
     s = (s-np.min(s))/(np.max(s)-np.min(s))*(max_node_size-min_node_size)+min_node_size
@@ -196,6 +209,8 @@ g.vs['size'] = s
 # Edge colors
 if similarity >0:
     g.es['color'] = ["black" if (edge['distance']>0.1 ) else "red" for edge in g.es]
+else:
+    g.es['color'] = edge_color
 # Edge width
 ## TO IMPLEMENT
 # Graph layout
