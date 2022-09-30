@@ -3,7 +3,6 @@
 *.tsv
 *.xlsx
 *.xls
-*.txt
 #### or
 ### Datasets in folders (extensionless like pickle)
 #/data/**/*.xlsx

@@ -1,7 +1,7 @@
 # pyNetworkPlot
 Network plot for visualization of immune cells receptor clonality.
 
-`pyNetworkPlot` is a small Python module build over [`igraph`]() and [`matplotlib`] that creates a Network plot from a sequence dataset. Ideal for clonality analysis of T cell/ B cell receptors (TCR/BRC), but can be extended to any analysis involving frequency of Strings.
+`pyNetworkPlot` is a small Python module build over [igraph](https://igraph.org/), [cairo](https://cairographics.org/pycairo/) and [matplotlib](https://matplotlib.org/) that creates a Network plot from a sequence dataset. Ideal for clonality analysis of T cell/ B cell receptors (TCR/BRC), but can be extended to any analysis involving frequency of Strings.
 
 ## 1. Installation
 `pyNetworkPlot` can be used in 3 different ways.

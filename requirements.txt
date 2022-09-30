@@ -1,0 +1,8 @@
+numpy==1.23.3
+pandas==1.5.0
+openpyxl==3.0.10
+matplotlib==3.6.0
+polyleven==0.7
+pillow==9.2.0
+python-igraph==0.9.11
+pycairo==1.21.0
