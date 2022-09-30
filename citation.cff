@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Diaz Boada
+    given-names: Juan Sebastian
+title: "pyNetworkPlot"
+version: 0.1
+date-released: 2022-09-30
+url: "https://github.com/BioinfoVisualization/pyNetworkPlot"
