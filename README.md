@@ -44,8 +44,8 @@ By calling the script with the corresponding parameters in the correct environme
 
 + `out_path` : string. Path to the file where the plot is going to be saved.
 + `seq_col` : string (optional). Name of the column corresponding to the sequence in the dataset. Defaults to 'sequence'.
-+ `color_col`  : string (optional). Name of the column corresponding to the color values in the dataset. Defaults to 'color'.
-+ `shape_col` : string (optional). Name of the column corresponding to the shape values in the  dataset. Defaults to 'shape'.
++ `color_col`  : string (optional). Name of the column corresponding to the color values in the dataset. Defaults to None.
++ `shape_col` : string (optional). Name of the column corresponding to the shape values in the  dataset. Defaults to None.
 + `size_col` : string (optional). Name of the column corresponding to the size values in the dataset. Defaults to None.
 + `similarity` : int (optional). Maximum difference in amino acids between sequences to consider them similar. If non-zero, identical sequences will be plotted red and
 similar sequences black. Defaults to zero (only plots edges between identical sequences).

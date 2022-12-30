@@ -69,8 +69,80 @@ import spring_functions as kxs
 from data_functions import group_with_freq
 from drawing import *
 
+def networkPlot(df,ax,seq_col='sequence',color_col=None,shape_col=None,
+                size_col=None,similarity=0,layout='FR',title = 'Network plot',
+                use_legend=False):
+    """Generates network plot from dataframe returning Axes with plot.
+
+    Takes a sequence dataset as a pandas.DataFrame (df), calculates the
+    pair-wise levenshtein distances of the sequences and generates a network
+    plot plot with the corresponding color, shpae and size information in the
+    columns of the dataframe. The plot is returned in a matplotlib.axes.Axes
+    object.
+
+    Parameters
+    ----------
+    df : pandas DataFrame.
+        DataFrame with the sequence information. It must have at least one
+        column holding the sequences.
+    ax : matplotlib.axes.Axes.
+        Axes where to plot the Network plot.
+    seq_col : string (optional).
+        Name of the column with the string sequences. Defaults to 'sequence'.
+    color_col : string (optional).
+        Name of the column corresponding to the color of each sample. Defaults to None.
+    shape_col : string (optional).
+        Name of the column corresponding to the shape of each sample. Defaults to None.
+    size_col : string (optional).
+        Name of the column corresponding to the size of each sample. Defaults to None.
+    similarity : int (optional).
+        Maximum difference in characters between sequences to consider them similar. Defaults to 0.
+    layout : string (optional).
+        Keyword of the drawing algorithm to use. Defaults to 'FR'.
+    title : string (optional).
+        Title of the plot to be written on top of the plot. Defaults to 'Network plot'.
+    use_legend : boolean
+        Whether to include a legend in the figure. Defaults to False.
+
+    Returns
+    -------
+    matplotlib.Axes.ax
+        Ax object holding the plot.
+    """
+    # Setup
+    unit=50
+    max_node_size=unit
+    min_node_size=unit/10
+    group_unique = True # Boolean
+    remove_unique = True # Boolean
+    edge_color = 'black'
+
+    if color_col or shape_col or size_col:
+        legend = args.legend
+    else:
+        legend =False
+        warnings.warn("Setting legend to False as all nodes are plotted equally.")
+
+    # Checks for NaN columns
+    nan_cols = []
+    for c in df.columns:
+        if np.any(df.loc[:,c].isna()):
+            nan_cols.append(c)
+    if len(nan_cols)>0:
+        raise ValueError('The columns ', nan_cols, ' have NaN values.')
+    # Frequency grouping
+    df = group_with_freq(df,seq_col,group_unique).sort_values(['freq_'+seq_col,seq_col],ascending=False).reset_index(drop=True)
+    if remove_unique:
+        df = df.loc[df['group_'+seq_col]!=-1]
+    else:
+        df.loc[df['group_'+seq_col]==-1,'group_'+seq_col]=df['group_'+seq_col].max()+1
+
+    return ax
+
+
+
 # Argparser definition
-parser = argparse.ArgumentParser(description="Parameters of volcano plot.")
+parser = argparse.ArgumentParser(description="Parameters of network plot.")
 parser.add_argument('in_path', type=str, help="Path to the sequence dataset.")
 parser.add_argument('out_path', type=str, help="Path to the file where the figure will be saved.")
 parser.add_argument('--seq_col', type=str, default='sequence', help="Name of the column corresponding to the sequencein the dataset. Defaults to 'sequence'.")
@@ -78,9 +150,9 @@ parser.add_argument('--color_col', type=str, default=None, help="Name of the col
 parser.add_argument('--custom_color',type=str,default=None, help="Path to a file mapping elements of color_col to a hex color code. Defaults to None (use system default colors).")
 parser.add_argument('--shape_col', type=str, default=None, help="Name of the column corresponding to the shape values in the  dataset. Defaults to None.")
 parser.add_argument('--size_col', type=str, default=None, help="Name of the column corresponding to the size values in the dataset. Defaults to None.")
-parser.add_argument('--similarity', type=int, default=0, help="Maximum difference in amino acids between sequences to consider them similar. Defaults to 0.")
+parser.add_argument('--similarity', type=int, default=0, help="Maximum difference in characters between sequences to consider them similar. Defaults to 0.")
 parser.add_argument('--layout', type=str, default='FR', help="Keyword of the drawing algorithm to use. Defaults to 'FR'.")
-parser.add_argument('--use-legend', dest='legend', action='store_true',help="Wether to include a legend in the figure.")
+parser.add_argument('--use-legend', dest='legend', action='store_true',help="Whether to include a legend in the figure.")
 args = parser.parse_args()
 
 # Data parameters
@@ -323,3 +395,6 @@ else:
         #'edge_width' : g.es['width'],
     }
     ig.plot(g,target=out_file,**visual_style)
+
+if __name__ == "__main__":
+    main()
